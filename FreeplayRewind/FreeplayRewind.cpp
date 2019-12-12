@@ -7,7 +7,7 @@
 
 using namespace std::placeholders;
 
-BAKKESMOD_PLUGIN(FreeplayRewind, "Freeplay Rewind", "1.1", PLUGINTYPE_FREEPLAY)
+BAKKESMOD_PLUGIN(FreeplayRewind, "Freeplay Rewind", "1.2", PLUGINTYPE_FREEPLAY)
 
 
 
@@ -81,8 +81,8 @@ public:
 
 	/* for rewinding, interpolate between two instants */
 	void interpolate(GameState lhs, GameState rhs, float elapsed) {
-		float custom_elapsed = elapsed * 1000;
-		float intval = snapshot_interval * 1000;
+		float custom_elapsed = elapsed * 1000; 
+		float intval = snapshot_interval * 1000; 
 		Vector snap = Vector(intval);
 		Rotator rotator = Rotator(intval);
 		CustomRotator snapR = CustomRotator(rotator);
@@ -389,7 +389,7 @@ void FreeplayRewind::registerCvars() {
 void FreeplayRewind::onValuesChanged() {
 	/* Enable/disable plugin */
 	cvarManager->getCvar("fr_enabled").addOnValueChanged([this](std::string oldValue, CVarWrapper now) {
-		if (gameWrapper->IsInFreeplay()) return;
+		if (!gameWrapper->IsInFreeplay()) return;
 		clearPlugin();
 		if (*fr_enabled) gameWrapper->RegisterDrawable(bind(&FreeplayRewind::render, this, std::placeholders::_1));
 	});
@@ -450,6 +450,7 @@ void FreeplayRewind::onValuesChanged() {
 	cvarManager->getCvar("fr_color_element").notify();
 
 	cvarManager->getCvar("fr_replay_enabled").addOnValueChanged([this](std::string oldValue, CVarWrapper now) {
+		setReplay();
 		if (gameWrapper->IsInFreeplay() && !*fr_replay_enabled) {
 			ServerWrapper game = gameWrapper->GetGameEventAsServer();
 			ReplayDirectorWrapper replay = game.GetReplayDirector();
@@ -564,8 +565,10 @@ void FreeplayRewind::registerNotifiers() {
 	}, "", PERMISSION_PAUSEMENU_CLOSED); // didnt find another way to figure out if game is paused
 
 	cvarManager->registerNotifier("fr_replaypov_switch", [this](std::vector<string> params) {
-		if (!*fr_switchpov_enabled && !gameWrapper->IsInGame() && !gameWrapper->GetLocalCar().IsNull()) return;
-		cvarManager->getCvar("cl_goalreplay_pov").setValue(!cvarManager->getCvar("cl_goalreplay_pov").getBoolValue());
+		if (!*fr_switchpov_enabled || (!gameWrapper->IsInGame() && !gameWrapper->IsInOnlineGame() ) )
+			return;
+		if (gameWrapper->GetLocalCar().IsNull()) 
+			cvarManager->getCvar("cl_goalreplay_pov").setValue(!cvarManager->getCvar("cl_goalreplay_pov").getBoolValue());
 	}, "", PERMISSION_ALL);
 }
 
@@ -617,24 +620,32 @@ void FreeplayRewind::startFreeplay() {
 
 
 void FreeplayRewind::setReplay() {
-	if (!*fr_replay_enabled)
+	if (!gameWrapper->IsInFreeplay())
 		return;
-
+	
 	ServerWrapper game = gameWrapper->GetGameEventAsServer();
-	if (!gameWrapper->IsInFreeplay() || game.GetBall().IsNull() || gameWrapper->GetLocalCar().IsNull()) {
-		//gameWrapper->SetTimeout(std::bind(&FreeplayRewind::setReplay, this), 0.1);
-		return;
-	}
 
-	ReplayDirectorWrapper replay = game.GetReplayDirector();
-	if (!replay.IsNull()) {
-		game.SetPostGoalTime(0.01);
-		replay.SetMinReplayTime(1);
-		replay.SetMaxReplayTime(5);
-		replay.SetSlomoTimeDilation(0.125);
-		replay.SetReplayPadding(1);
+	if (*fr_replay_enabled) {
+		if (game.GetBall().IsNull() || gameWrapper->GetLocalCar().IsNull())
+			return;
+
+		ReplayDirectorWrapper replay = game.GetReplayDirector();
+		if (!replay.IsNull()) {
+			game.SetPostGoalTime(0.01);
+			replay.SetMinReplayTime(1);
+			replay.SetMaxReplayTime(5);
+			replay.SetSlomoTimeDilation(0.125);
+			replay.SetReplayPadding(1);
+		}
 	}
-	// else gameWrapper->SetTimeout(std::bind(&FreeplayRewind::setReplay, this), 0.1);
+	else {
+		ReplayDirectorWrapper replay = game.GetReplayDirector();
+		game.SetPostGoalTime(3);
+		replay.SetMinReplayTime(4);
+		replay.SetMaxReplayTime(10);
+		replay.SetSlomoTimeDilation(0.25);
+		replay.SetReplayPadding(2);
+	}
 }
 
 
@@ -849,7 +860,7 @@ void FreeplayRewind::onPreAsync() {
 
 void FreeplayRewind::recordGameState() {
 
-	// check if we can continue 
+	//check if we can continue 
 
 	if (!gameWrapper->IsInFreeplay() || !*fr_enabled || clearingPlugin)
 		return;
@@ -920,18 +931,18 @@ void FreeplayRewind::render(CanvasWrapper canvas) { // improve this mess sometim
 	resY = canvas.GetSize().Y;
 
 	// check if we can render
+	
+	ServerWrapper game = gameWrapper->GetGameEventAsServer();
 
-	if (!gameWrapper->IsInFreeplay() || !*fr_enabled || clearingPlugin) {
-		// sounds keep playing forever so:
-		//if(backwardSound.isPlaying() || forwardSound.isPlaying())
+	if (!gameWrapper->IsInFreeplay() || !*fr_enabled || clearingPlugin
+		|| game.IsNull() || game.GetBall().IsNull() || game.GetGameCar().IsNull()) {
+
+		// sounds could keep playing if it was playing while joining an online game, so:
+		if(backwardSound.isPlaying() || forwardSound.isPlaying())
 			stopSounds();
 
 		return;
 	}
-
-	ServerWrapper game = gameWrapper->GetGameEventAsServer();
-	if (game.IsNull() || game.GetBall().IsNull() || game.GetGameCar().IsNull())
-		return;
 
 	// render stuffs
 
