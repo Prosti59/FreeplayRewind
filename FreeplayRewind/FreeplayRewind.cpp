@@ -7,7 +7,7 @@
 
 using namespace std::placeholders;
 
-BAKKESMOD_PLUGIN(FreeplayRewind, "Freeplay Rewind", "1.0", PLUGINTYPE_FREEPLAY)
+BAKKESMOD_PLUGIN(FreeplayRewind, "Freeplay Rewind", "1.1", PLUGINTYPE_FREEPLAY)
 
 
 
@@ -314,9 +314,9 @@ void FreeplayRewind::initSounds() {
 void FreeplayRewind::registerCvars() {
 	/* Enable plugin and rewind button/key */
 	cvarManager->registerCvar("fr_enabled", "1", "", false, true, 0, true, 1, true).bindTo(fr_enabled);
-	cvarManager->registerCvar("fr_rewindKeyController", "XboxTypeS_LeftShoulder", "", false, false, 0, false, 0, false);
-	cvarManager->registerCvar("fr_rewindKeyKBM", "R", "", false, false, 0, false, 0, false);
-	cvarManager->registerCvar("fr_bindKeyStatus", "Click here to quickly bind your rewind button/key", "", false, false, 0, false, 0, false);
+	cvarManager->registerCvar("fr_rewindKeyController", "XboxTypeS_LeftShoulder", "", false, false, 0.0f, false, 1.0f, true);
+	cvarManager->registerCvar("fr_rewindKeyKBM", "R", "", false, false, 0.0f, false, 1.0f, true);
+	cvarManager->registerCvar("fr_bindKeyStatus", "Click here to quickly bind your rewind button/key", "", false, false, 0.0f, false, 1.0f, false);
 
 	/* rewind settings */
 	cvarManager->registerCvar("fr_rewind_backwardSound", "1", "", false, true, 0, true, 1, true).bindTo(fr_rewind_backwardSound);
@@ -392,14 +392,14 @@ void FreeplayRewind::onValuesChanged() {
 		if (gameWrapper->IsInFreeplay()) return;
 		clearPlugin();
 		if (*fr_enabled) gameWrapper->RegisterDrawable(bind(&FreeplayRewind::render, this, std::placeholders::_1));
-		});
+	});
 
 	/* Change rewind button Controller and update binding for switch pov */
 	cvarManager->getCvar("fr_rewindKeyKBM").addOnValueChanged([this](std::string oldValue, CVarWrapper now) {
 		rewindKeyKBM = gameWrapper->GetFNameIndexByString(now.getStringValue());
 		cvarManager->executeCommand("unbind " + oldValue);
 		cvarManager->executeCommand("bind " + now.getStringValue() + " \"fr_replaypov_switch\"");
-		});
+	});
 
 	cvarManager->getCvar("fr_rewindKeyKBM").notify();
 
@@ -408,7 +408,7 @@ void FreeplayRewind::onValuesChanged() {
 		rewindKeyController = gameWrapper->GetFNameIndexByString(now.getStringValue());
 		cvarManager->executeCommand("unbind " + oldValue);
 		cvarManager->executeCommand("bind " + now.getStringValue() + " \"fr_replaypov_switch\"");
-		});
+	});
 
 	cvarManager->getCvar("fr_rewindKeyController").notify();
 
@@ -416,17 +416,17 @@ void FreeplayRewind::onValuesChanged() {
 	cvarManager->getCvar("fr_color_elementR").addOnValueChanged([this](std::string oldValue, CVarWrapper now) {
 		if (stoi(oldValue) != now.getIntValue())
 			updateColorValue("R", now.getIntValue());
-		});
+	});
 
 	cvarManager->getCvar("fr_color_elementG").addOnValueChanged([this](std::string oldValue, CVarWrapper now) {
 		if (stoi(oldValue) != now.getIntValue())
 			updateColorValue("G", now.getIntValue());
-		});
+	});
 
 	cvarManager->getCvar("fr_color_elementB").addOnValueChanged([this](std::string oldValue, CVarWrapper now) {
 		if (stoi(oldValue) != now.getIntValue())
 			updateColorValue("B", now.getIntValue());
-		});
+	});
 
 	/* Change active element (get RGB values of new element) */
 	cvarManager->getCvar("fr_color_element").addOnValueChanged([this](std::string oldValue, CVarWrapper now) {
@@ -445,7 +445,7 @@ void FreeplayRewind::onValuesChanged() {
 		cvarManager->getCvar("fr_color_elementR").setValue(cvarManager->getCvar(cvarName + "R").getIntValue());
 		cvarManager->getCvar("fr_color_elementG").setValue(cvarManager->getCvar(cvarName + "G").getIntValue());
 		cvarManager->getCvar("fr_color_elementB").setValue(cvarManager->getCvar(cvarName + "B").getIntValue());
-		});
+	});
 
 	cvarManager->getCvar("fr_color_element").notify();
 
@@ -459,7 +459,7 @@ void FreeplayRewind::onValuesChanged() {
 			replay.SetSlomoTimeDilation(0.25);
 			replay.SetReplayPadding(2);
 		}
-		});
+	});
 }
 
 
@@ -489,48 +489,48 @@ void FreeplayRewind::registerNotifiers() {
 		if (testingKey) return;
 		testingKey = true;
 		gameWrapper->SetTimeout(std::bind(&FreeplayRewind::bindRewindKey, this, 5.0f), 0);
-		}, "", PERMISSION_ALL);
+	}, "", PERMISSION_ALL);
 
 	// default values
 	cvarManager->registerNotifier("fr_rewind_maxHistory_default", [this](std::vector<string> params) {
 		cvarManager->getCvar("fr_rewind_maxHistory").setValue(375);	 // fr_rewind_maxHistory
-		}, "", PERMISSION_ALL);
+	}, "", PERMISSION_ALL);
 
 	cvarManager->registerNotifier("fr_rewind_backwardSpeed_default", [this](std::vector<string> params) {
 		cvarManager->getCvar("fr_rewind_backwardSpeed").setValue(3.0f);
-		}, "", PERMISSION_ALL);
+	}, "", PERMISSION_ALL);
 
 	cvarManager->registerNotifier("fr_rewind_forwardSpeed_default", [this](std::vector<string> params) {
 		cvarManager->getCvar("fr_rewind_forwardSpeed").setValue(2.5f);
-		}, "", PERMISSION_ALL);
+	}, "", PERMISSION_ALL);
 
 	cvarManager->registerNotifier("fr_rewind_deadzone_default", [this](std::vector<string> params) {
 		cvarManager->getCvar("fr_rewind_deadzone").setValue(0.05f);
-		}, "", PERMISSION_ALL);
+	}, "", PERMISSION_ALL);
 
 	cvarManager->registerNotifier("fr_filter_opacity_default", [this](std::vector<string> params) {
 		cvarManager->getCvar("fr_filter_opacity").setValue(60);
-		}, "", PERMISSION_ALL);
+	}, "", PERMISSION_ALL);
 
 	cvarManager->registerNotifier("fr_filter_fadeSpeed_default", [this](std::vector<string> params) {
 		cvarManager->getCvar("fr_filter_fadeSpeed").setValue(15);
-		}, "", PERMISSION_ALL);
+	}, "", PERMISSION_ALL);
 
 	cvarManager->registerNotifier("fr_filter_shake_default", [this](std::vector<string> params) {
 		cvarManager->getCvar("fr_filter_shake").setValue(25);
-		}, "", PERMISSION_ALL);
+	}, "", PERMISSION_ALL);
 
 	cvarManager->registerNotifier("fr_icons_positionX_default", [this](std::vector<string> params) {
 		cvarManager->getCvar("fr_icons_positionX").setValue(83);
-		}, "", PERMISSION_ALL);
+	}, "", PERMISSION_ALL);
 
 	cvarManager->registerNotifier("fr_icons_positionY_default", [this](std::vector<string> params) {
 		cvarManager->getCvar("fr_icons_positionY").setValue(13);
-		}, "", PERMISSION_ALL);
+	}, "", PERMISSION_ALL);
 
 	cvarManager->registerNotifier("fr_icons_size_default", [this](std::vector<string> params) {
 		cvarManager->getCvar("fr_icons_size").setValue(1.8f);
-		}, "", PERMISSION_ALL);
+	}, "", PERMISSION_ALL);
 
 	cvarManager->registerNotifier("fr_color_element_default", [this](std::vector<string> params) {
 
@@ -556,17 +556,17 @@ void FreeplayRewind::registerNotifiers() {
 			cvarManager->getCvar("fr_color_elementG").setValue(60);
 			cvarManager->getCvar("fr_color_elementB").setValue(60);
 		}
-		}, "", PERMISSION_ALL);
+	}, "", PERMISSION_ALL);
 
 
 	cvarManager->registerNotifier("fr_check_paused", [this](std::vector<string> params) {
 		pausedMenuUp = false;
-		}, "", PERMISSION_PAUSEMENU_CLOSED); // didnt find another way to figure out if game is paused
+	}, "", PERMISSION_PAUSEMENU_CLOSED); // didnt find another way to figure out if game is paused
 
 	cvarManager->registerNotifier("fr_replaypov_switch", [this](std::vector<string> params) {
 		if (!*fr_switchpov_enabled && !gameWrapper->IsInGame() && !gameWrapper->GetLocalCar().IsNull()) return;
 		cvarManager->getCvar("cl_goalreplay_pov").setValue(!cvarManager->getCvar("cl_goalreplay_pov").getBoolValue());
-		}, "", PERMISSION_ALL);
+	}, "", PERMISSION_ALL);
 }
 
 
@@ -855,7 +855,9 @@ void FreeplayRewind::recordGameState() {
 		return;
 
 	ServerWrapper game = gameWrapper->GetGameEventAsServer();
-	if (abs(game.GetSecondsElapsed() - lastRecordTime) < snapshot_interval)
+	float secondsElapsed = game.GetSecondsElapsed();
+
+	if (abs(secondsElapsed - lastRecordTime) < snapshot_interval)
 		return;
 
 	if (game.GetBall().IsNull() || game.GetGameCar().IsNull())
@@ -867,8 +869,8 @@ void FreeplayRewind::recordGameState() {
 		history.erase(history.begin());
 
 	index = history.size(); //-1;
-	history.push_back(GameState(game, lastRecordTime));
-	lastRecordTime = game.GetSecondsElapsed();
+	history.push_back(GameState(game, secondsElapsed));
+	lastRecordTime = secondsElapsed;
 
 	if (overwrite.timestamp == 0 && overwrite.ball_location.Z == 0 && history.size() == 1) {
 		overwrite.timestamp = 1;
@@ -919,8 +921,13 @@ void FreeplayRewind::render(CanvasWrapper canvas) { // improve this mess sometim
 
 	// check if we can render
 
-	if (!gameWrapper->IsInFreeplay() || !*fr_enabled || clearingPlugin)
+	if (!gameWrapper->IsInFreeplay() || !*fr_enabled || clearingPlugin) {
+		// sounds keep playing forever so:
+		//if(backwardSound.isPlaying() || forwardSound.isPlaying())
+			stopSounds();
+
 		return;
+	}
 
 	ServerWrapper game = gameWrapper->GetGameEventAsServer();
 	if (game.IsNull() || game.GetBall().IsNull() || game.GetGameCar().IsNull())

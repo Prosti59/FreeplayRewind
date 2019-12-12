@@ -4,11 +4,11 @@
 #pragma comment( lib, "winmm.lib" )
 
 
-struct RGB {
-	int R;
-	int G;
-	int B;
-};
+//struct RGB {
+//	unsigned char R;
+//	unsigned char G;
+//	unsigned char B;
+//};
 
 struct KEY {
 	string UnrealName;
